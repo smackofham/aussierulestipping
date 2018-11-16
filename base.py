@@ -13,10 +13,14 @@ class BsScrapeYear:
         self.year_data = bs4.BeautifulSoup(self.res.text, "html.parser")
         self.round_data = self.year_data.select('tr td')
         self.final_links = self.year_data.select('b + a[href]')
-        # Gets the url for the individual games/venues.
-        # Have to clean up so it only contains the games.
+        # Gets the url for the individual games
         # Have a missing game but don't know where it is.
-        self.game_urls = [link.get('href') for link in self.final_links]
+        self.game_urls = []
+        for link in self.final_links:
+            game_url = link.get('href')
+            if 'game' in game_url:
+                self.game_urls.append(game_url)
+
 
 # class BsScrapeRound:
 #     def __init__(self, round):
@@ -25,6 +29,10 @@ class BsScrapeYear:
 #         self.round_data = self.year_data.select('div h1')
 
 twentyeighteen = BsScrapeYear(url)
+
+print(twentyeighteen.game_urls)
+print(len(twentyeighteen.game_urls))
+
 # print(twentyeighteen.round_data[0])
 #
 # print(twentyeighteen.round_data[1])
@@ -36,13 +44,13 @@ twentyeighteen = BsScrapeYear(url)
 #     print(twentyeighteen.links[i])
 # print(twentyeighteen.links)
 
-# print(twentyeighteen.html)
-print(len(twentyeighteen.html))
-
-
-print(twentyeighteen.final_links)
-print(len(twentyeighteen.final_html))
-print(twentyeighteen.final_html)
+# # print(twentyeighteen.html)
+# print(len(twentyeighteen.html))
+#
+#
+# print(twentyeighteen.final_links)
+# print(len(twentyeighteen.final_html))
+# print(twentyeighteen.final_html)
 # for i in range(10):
 #     print(twentyeighteen.round_data[i].text)
 
