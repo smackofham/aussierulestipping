@@ -1,8 +1,19 @@
 import bs4
 import requests
+from selenium import webdriver
 
 
 url = 'https://afltables.com/afl/seas/2018.html'
+game_url1 = 'https://afltables.com/afl/stats/games/2018/031420180322.html'
+
+# driver = webdriver.Firefox()
+# driver.get(game_url1)
+#
+# html = driver.page_source
+# soup = bs4.BeautifulSoup(html, "html.parser")
+#
+# print(soup)
+
 
 
 class BsScrapeYear:
@@ -11,7 +22,6 @@ class BsScrapeYear:
         self.url = url
         self.res = requests.get(self.url)
         self.year_data = bs4.BeautifulSoup(self.res.text, "html.parser")
-        self.round_data = self.year_data.select('tr td')
         self.final_links = self.year_data.select('b + a[href]')
         # Gets the url for the individual games
         # Have a missing game but don't know where it is.
@@ -21,6 +31,32 @@ class BsScrapeYear:
             if 'game' in game_url:
                 self.game_urls.append(game_url)
 
+    def get_game_urls(self):
+        base_afltables_url = 'https://afltables.com/afl'
+        # The urls in self.game_urls have the format '../stats/games/2018/031420180322.html'
+        # Have to remove the leading two dots.
+        complete_urls = [base_afltables_url + game_url[2:] for game_url in self.game_urls]
+        return complete_urls
+
+
+class BsScrapeGame:
+
+    def __init__(self, game_url):
+        self.url = game_url
+        self.res = requests.get(self.url)
+        self.match_data = bs4.BeautifulSoup(self.res.text, "html.parser")
+        # Selects every <a> element with a href attribute starting with '../../../teams'.
+        self.team1 = self.match_data.select('a[href^="../../../teams"]')[0].text
+        self.team2 = self.match_data.select('a[href^="../../../teams"]')[1].text
+
+    def get_scores(self):
+        top_table = self.match_data.find_all('table')[0]
+        table_info = top_table.find_all('td')
+        for r in table_info:
+            print(r.text)
+        return top_table
+
+
 
 # class BsScrapeRound:
 #     def __init__(self, round):
@@ -29,9 +65,12 @@ class BsScrapeYear:
 #         self.round_data = self.year_data.select('div h1')
 
 twentyeighteen = BsScrapeYear(url)
+# print(twentyeighteen.get_game_urls())
 
-print(twentyeighteen.game_urls)
-print(len(twentyeighteen.game_urls))
+game_one = BsScrapeGame(game_url1)
+print(game_one.team1, game_one.team2)
+scores = game_one.get_scores()
+
 
 # print(twentyeighteen.round_data[0])
 #
