@@ -1,6 +1,7 @@
 import bs4
 import requests
-from selenium import webdriver
+import re
+# from selenium import webdriver
 
 
 url = 'https://afltables.com/afl/seas/2018.html'
@@ -56,6 +57,51 @@ class BsScrapeGame:
             print(r.text)
         return top_table
 
+    def get_player_stats(self):
+        # top_body has a length of 4 for the 4 different tables on the page.
+        top_body = self.match_data.find_all('tbody')[3]
+        # player_info has a length of 22 for all of the players on the team.
+        player_info = top_body.find_all('tr')[21]
+        player_stats = player_info.find_all('td')
+        print('Length of player_info: ', len(player_info))
+        for stat in player_stats:
+            if stat.text == '':
+                print('NaN')
+            else:
+                print(stat.text)
+        # print(player_info[0])
+        # for body in player_info:
+        #     print(body)
+
+    def get_scoring_progression(self):
+        top_body = self.match_data.find_all('table')
+        print(len(top_body))
+        scoring_progression_table = top_body[len(top_body)-1]
+        scoring_progression_stats = scoring_progression_table.find_all('tr')
+        print('scoring_progression length: ', len(scoring_progression_stats))
+        # print(scoring_progression_stats)
+        for progress in scoring_progression_stats:
+            if progress.text == '':
+                print('Nothing')
+            elif len(progress) != 1:
+                # print(len(progress))
+                th = [x.text for x in progress.find_all('th')]
+                td = [x.text for x in progress.find_all('td')]
+                y = []
+                if th != y:
+                    print(th)
+                if td != y:
+                    print(td)
+            elif len(progress) == 1:
+                if progress.find('td') is not None:
+                    x = progress.find('td')
+                    # print(len(x))
+                    y = x.find('b')
+                    print(re.search('([1-4][a-z][a-z]|Final) quarter \(\d\dm \d*s\)', y.text).group(0))
+
+
+
+
 
 
 # class BsScrapeRound:
@@ -69,8 +115,9 @@ twentyeighteen = BsScrapeYear(url)
 
 game_one = BsScrapeGame(game_url1)
 print(game_one.team1, game_one.team2)
-scores = game_one.get_scores()
-
+# scores = game_one.get_scores()
+# game_one.get_player_stats()
+game_one.get_scoring_progression()
 
 # print(twentyeighteen.round_data[0])
 #
