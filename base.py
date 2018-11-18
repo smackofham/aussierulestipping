@@ -1,20 +1,10 @@
 import bs4
 import requests
 import re
-# from selenium import webdriver
 
 
 url = 'https://afltables.com/afl/seas/2018.html'
 game_url1 = 'https://afltables.com/afl/stats/games/2018/031420180322.html'
-
-# driver = webdriver.Firefox()
-# driver.get(game_url1)
-#
-# html = driver.page_source
-# soup = bs4.BeautifulSoup(html, "html.parser")
-#
-# print(soup)
-
 
 
 class BsScrapeYear:
@@ -37,6 +27,7 @@ class BsScrapeYear:
         # The urls in self.game_urls have the format '../stats/games/2018/031420180322.html'
         # Have to remove the leading two dots.
         complete_urls = [base_afltables_url + game_url[2:] for game_url in self.game_urls]
+        # Return a list of the complete game urls for the season.
         return complete_urls
 
 
@@ -53,20 +44,24 @@ class BsScrapeGame:
     def get_scores(self):
         top_table = self.match_data.find_all('table')[0]
         table_info = top_table.find_all('td')
+        score_list = []
         for r in table_info:
-            print(r.text)
-        return top_table
+            score_list.append(r.text)
+        # Removes the back and forth arrows.
+        score_list.pop(0)
+        score_list.pop(1)
+        return score_list
 
     def get_player_stats(self):
         # top_body has a length of 4 for the 4 different tables on the page.
-        top_body = self.match_data.find_all('tbody')[3]
+        top_body = self.match_data.find_all('tbody')[0]
         # player_info has a length of 22 for all of the players on the team.
-        player_info = top_body.find_all('tr')[21]
+        player_info = top_body.find_all('tr')[0]
         player_stats = player_info.find_all('td')
         print('Length of player_info: ', len(player_info))
         for stat in player_stats:
-            if stat.text == '':
-                print('NaN')
+            if stat.text == ' ':
+                print('Nothing')
             else:
                 print(stat.text)
         # print(player_info[0])
@@ -85,6 +80,8 @@ class BsScrapeGame:
                 print('Nothing')
             elif len(progress) != 1:
                 # print(len(progress))
+                # th element tag is only used for the column headings (Team name, Time, Score, Other team Time,
+                # Other team name)
                 th = [x.text for x in progress.find_all('th')]
                 td = [x.text for x in progress.find_all('td')]
                 y = []
@@ -116,8 +113,9 @@ twentyeighteen = BsScrapeYear(url)
 game_one = BsScrapeGame(game_url1)
 print(game_one.team1, game_one.team2)
 # scores = game_one.get_scores()
-# game_one.get_player_stats()
-game_one.get_scoring_progression()
+# print(scores)
+game_one.get_player_stats()
+# game_one.get_scoring_progression()
 
 # print(twentyeighteen.round_data[0])
 #
