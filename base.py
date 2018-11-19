@@ -36,7 +36,9 @@ class BsScrapeGame:
     def __init__(self, game_url):
         self.url = game_url
         self.res = requests.get(self.url)
-        self.match_data = bs4.BeautifulSoup(self.res.text, "html.parser")
+        # Definitely get different(better) results from using the lxml parser.
+        self.match_data = bs4.BeautifulSoup(self.res.text, "lxml")
+        # print(self.match_data)
         # Selects every <a> element with a href attribute starting with '../../../teams'.
         self.team1 = self.match_data.select('a[href^="../../../teams"]')[0].text
         self.team2 = self.match_data.select('a[href^="../../../teams"]')[1].text
@@ -53,89 +55,84 @@ class BsScrapeGame:
         return score_list
 
     def get_player_stats(self):
-        # top_body has a length of 4 for the 4 different tables on the page.
-        top_body = self.match_data.find_all('tbody')[0]
-        # player_info has a length of 22 for all of the players on the team.
-        player_info = top_body.find_all('tr')[0]
-        player_stats = player_info.find_all('td')
-        print('Length of player_info: ', len(player_info))
-        for stat in player_stats:
-            if stat.text == ' ':
-                print('Nothing')
-            else:
-                print(stat.text)
-        # print(player_info[0])
-        # for body in player_info:
-        #     print(body)
+        # summary_tables has a length of 4 for the 4 different tables on the page.
+        summary_tables = self.match_data.find_all('tbody')
+        team1_stats = summary_tables[0]
+        team2_stats = summary_tables[1]
+        team1_player_details = summary_tables[2]
+        team2_player_details = summary_tables[3]
+        # team_stats has a length of 22 for all of the players on the team.
+
+        def process_team_stats(team_stats):
+            base_dict = {}
+            for player in team_stats:
+                individual_info = player.find_all('td')
+                player_stats = []
+                for stat in individual_info:
+                    player_stats.append(stat.text)
+                base_dict[player_stats[1]] = player_stats
+            return base_dict
+        team1_stats_dict = process_team_stats(team1_stats)
+        team2_stats_dict = process_team_stats(team2_stats)
+        team1_player_details_dict = process_team_stats(team1_player_details)
+        team2_player_details_dict = process_team_stats(team2_player_details)
+
+        return team1_stats_dict, team2_stats_dict, team1_player_details_dict, team2_player_details_dict
 
     def get_scoring_progression(self):
         top_body = self.match_data.find_all('table')
-        print(len(top_body))
         scoring_progression_table = top_body[len(top_body)-1]
         scoring_progression_stats = scoring_progression_table.find_all('tr')
-        print('scoring_progression length: ', len(scoring_progression_stats))
-        # print(scoring_progression_stats)
+        scoring_progression_output = []
         for progress in scoring_progression_stats:
-            if progress.text == '':
-                print('Nothing')
-            elif len(progress) != 1:
-                # print(len(progress))
+            if len(progress) != 1:
                 # th element tag is only used for the column headings (Team name, Time, Score, Other team Time,
                 # Other team name)
                 th = [x.text for x in progress.find_all('th')]
                 td = [x.text for x in progress.find_all('td')]
                 y = []
                 if th != y:
-                    print(th)
+                    scoring_progression_output.append(th)
                 if td != y:
-                    print(td)
+                    scoring_progression_output.append(td)
             elif len(progress) == 1:
                 if progress.find('td') is not None:
                     x = progress.find('td')
-                    # print(len(x))
                     y = x.find('b')
-                    print(re.search('([1-4][a-z][a-z]|Final) quarter \(\d\dm \d*s\)', y.text).group(0))
-
-
-
-
-
-
-# class BsScrapeRound:
-#     def __init__(self, round):
-#         self.round = round
-#         self.res = requests.get(self.url)
-#         self.round_data = self.year_data.select('div h1')
+                    findings = re.search('([1-4][a-z][a-z]|Final) quarter \(\d\dm \d*s\)', y.text).group(0)
+                    scoring_progression_output.append(findings)
+        return scoring_progression_output
 
 twentyeighteen = BsScrapeYear(url)
+
+
+# Code works for all of the games in the 2018 season.
+# for url in twentyeighteen.get_game_urls():
+#     game_one = BsScrapeGame(url)
+#
+#     scores = game_one.get_scores()
+#     print(scores)
+#
+#     print(game_one.get_player_stats())
+#
+#     print(game_one.get_scoring_progression())
+
+
+
+
 # print(twentyeighteen.get_game_urls())
-
+#
 game_one = BsScrapeGame(game_url1)
-print(game_one.team1, game_one.team2)
-# scores = game_one.get_scores()
+
+scores = game_one.get_scores()
 # print(scores)
-game_one.get_player_stats()
-# game_one.get_scoring_progression()
 
-# print(twentyeighteen.round_data[0])
-#
-# print(twentyeighteen.round_data[1])
+a, b, c, d = game_one.get_player_stats()
+print(c)
+# print(game_one.get_player_stats())
 
-# print(twentyeighteen.round_data[4].text)
-# print(len(twentyeighteen.round_data))
+# print(game_one.get_scoring_progression())
 
-# for i in range(0):
-#     print(twentyeighteen.links[i])
-# print(twentyeighteen.links)
 
-# # print(twentyeighteen.html)
-# print(len(twentyeighteen.html))
-#
-#
-# print(twentyeighteen.final_links)
-# print(len(twentyeighteen.final_html))
-# print(twentyeighteen.final_html)
-# for i in range(10):
-#     print(twentyeighteen.round_data[i].text)
 
-# body > center > table:nth-child(50) > tbody > tr
+
