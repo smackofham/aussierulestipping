@@ -56,15 +56,35 @@ class BsScrapeGame:
 
     def get_player_stats(self):
         # summary_tables has a length of 4 for the 4 different tables on the page.
-        summary_tables = self.match_data.find_all('tbody')
+        # Returns the conjoined thead and tbody data for each table.
+        summary_tables = self.match_data.select('.sortable')
         team1_stats = summary_tables[0]
         team2_stats = summary_tables[1]
         team1_player_details = summary_tables[2]
         team2_player_details = summary_tables[3]
+
         # team_stats has a length of 22 for all of the players on the team.
 
-        def process_team_stats(team_stats):
+        def process_team_stats(table_name):
+            # table_name.find_all('tbody') returns a bs4 results set. (Formatted as a list)
+            # If you want to further use css selectors on the results set, you have to take the first item of the list.
+            header = table_name.find_all('thead')[0].find_all('tr')
+            team_stats = table_name.find_all('tbody')[0]
+
+            def get_header_info(header_info):
+                info_list = []
+                for info in header_info:
+                    info_list.append(info.text)
+                return info_list
+
+            top_header = get_header_info(header[0])
+            bot_header = get_header_info(header[1])
+
             base_dict = {}
+
+            base_dict['Top Header'] = top_header
+            base_dict['Bottom Header'] = bot_header
+
             for player in team_stats:
                 individual_info = player.find_all('td')
                 player_stats = []
@@ -72,6 +92,7 @@ class BsScrapeGame:
                     player_stats.append(stat.text)
                 base_dict[player_stats[1]] = player_stats
             return base_dict
+
         team1_stats_dict = process_team_stats(team1_stats)
         team2_stats_dict = process_team_stats(team2_stats)
         team1_player_details_dict = process_team_stats(team1_player_details)
@@ -103,35 +124,21 @@ class BsScrapeGame:
                     scoring_progression_output.append(findings)
         return scoring_progression_output
 
+
 twentyeighteen = BsScrapeYear(url)
 
-
-# Code works for all of the games in the 2018 season.
-# for url in twentyeighteen.get_game_urls():
-#     game_one = BsScrapeGame(url)
-#
-#     scores = game_one.get_scores()
-#     print(scores)
-#
-#     print(game_one.get_player_stats())
-#
-#     print(game_one.get_scoring_progression())
-
-
-
-
-# print(twentyeighteen.get_game_urls())
-#
 game_one = BsScrapeGame(game_url1)
 
 scores = game_one.get_scores()
-# print(scores)
+print(scores)
 
 a, b, c, d = game_one.get_player_stats()
+print(a)
+print(b)
 print(c)
-# print(game_one.get_player_stats())
+print(d)
 
-# print(game_one.get_scoring_progression())
+print(game_one.get_scoring_progression())
 
 
 
