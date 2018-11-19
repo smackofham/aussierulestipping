@@ -1,9 +1,10 @@
 import bs4
+from bs4 import NavigableString
 import requests
 import re
 
 
-url = 'https://afltables.com/afl/seas/2018.html'
+url_2018 = 'https://afltables.com/afl/seas/2018.html'
 game_url1 = 'https://afltables.com/afl/stats/games/2018/031420180322.html'
 
 
@@ -12,8 +13,8 @@ class BsScrapeYear:
     def __init__(self, url):
         self.url = url
         self.res = requests.get(self.url)
-        self.year_data = bs4.BeautifulSoup(self.res.text, "html.parser")
-        self.final_links = self.year_data.select('b + a[href]')
+        self.year_soup = bs4.BeautifulSoup(self.res.text, "lxml")
+        self.final_links = self.year_soup.select('b + a[href]')
         # Gets the url for the individual games
         # Have a missing game but don't know where it is.
         self.game_urls = []
@@ -29,6 +30,21 @@ class BsScrapeYear:
         complete_urls = [base_afltables_url + game_url[2:] for game_url in self.game_urls]
         # Return a list of the complete game urls for the season.
         return complete_urls
+
+    def get_round_ladders(self):
+        round_dict = {}
+        for i in range(1, 24):
+            text_to_search = 'Rd ' + str(i) + ' Ladder'
+            round_table = self.year_soup.find(text=text_to_search).find_parent('table')
+            round_table_list = []
+            for afl_round in round_table:
+                if isinstance(afl_round, NavigableString):
+                    continue
+                else:
+                    round_table_list.append([r.text for r in afl_round])
+            round_dict[str(i)] = round_table_list
+        # Returns a dictionary with keys being the round number and values being the complete round ladder table.
+        return round_dict
 
 
 class BsScrapeGame:
@@ -52,6 +68,7 @@ class BsScrapeGame:
         # Removes the back and forth arrows.
         score_list.pop(0)
         score_list.pop(1)
+        # Returns a simple list with the game summary
         return score_list
 
     def get_player_stats(self):
@@ -97,7 +114,7 @@ class BsScrapeGame:
         team2_stats_dict = process_team_stats(team2_stats)
         team1_player_details_dict = process_team_stats(team1_player_details)
         team2_player_details_dict = process_team_stats(team2_player_details)
-
+        # Returns dictionaries with keys being the top/bottom headers and player names.
         return team1_stats_dict, team2_stats_dict, team1_player_details_dict, team2_player_details_dict
 
     def get_scoring_progression(self):
@@ -122,24 +139,31 @@ class BsScrapeGame:
                     y = x.find('b')
                     findings = re.search('([1-4][a-z][a-z]|Final) quarter \(\d\dm \d*s\)', y.text).group(0)
                     scoring_progression_output.append(findings)
+        # Returns a simple list of lists with individual rows having their own lists.
         return scoring_progression_output
 
-
-twentyeighteen = BsScrapeYear(url)
-
-game_one = BsScrapeGame(game_url1)
-
-scores = game_one.get_scores()
-print(scores)
-
-a, b, c, d = game_one.get_player_stats()
-print(a)
-print(b)
-print(c)
-print(d)
-
-print(game_one.get_scoring_progression())
+# ################### Testing year scraping
+# twentyeighteen = BsScrapeYear(url)
+# print(twentyeighteen.get_round_ladders())
+# urls_2018 = twentyeighteen.get_game_urls()
 
 
+# ################### Testing game scraping
+# def test_game_scrape_functions(game_url):
+#     game_one = BsScrapeGame(game_url)
+#
+#     scores = game_one.get_scores()
+#     print(scores)
+#
+#     a, b, c, d = game_one.get_player_stats()
+#     print(a)
+#     print(b)
+#     print(c)
+#     print(d)
+#
+#     print(game_one.get_scoring_progression())
 
 
+# ################### Testing game scraping for the year.
+# for url in urls_2018:
+#     test_game_scrape_functions(url)
