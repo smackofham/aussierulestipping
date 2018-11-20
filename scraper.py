@@ -125,18 +125,21 @@ class BsScrapeGame:
             top_header = get_header_info(header[0])
             bot_header = get_header_info(header[1])
 
-            base_dict = {}
+            # base_dict = {}
+            base_list = []
+            base_list.append(top_header)
+            base_list.append(bot_header)
 
-            base_dict['Top Header'] = top_header
-            base_dict['Bottom Header'] = bot_header
+            # base_dict['Top Header'] = top_header
+            # base_dict['Bottom Header'] = bot_header
 
             for player in team_stats:
                 individual_info = player.find_all('td')
                 player_stats = []
                 for stat in individual_info:
                     player_stats.append(stat.text)
-                base_dict[player_stats[1]] = player_stats
-            return base_dict
+                base_list.append(player_stats)
+            return base_list
 
         team1_stats_dict = process_team_stats(team1_stats)
         team2_stats_dict = process_team_stats(team2_stats)
@@ -173,10 +176,10 @@ class BsScrapeGame:
 
 
 ################### Testing year scraping
-twentyeighteen = BsScrapeYear(url_year)
-# print(twentyeighteen.get_round_ladders())
-urls_2018 = twentyeighteen.get_game_urls()
-twentyeighteen.get_summaries()
+# twentyeighteen = BsScrapeYear(url_year)
+# # print(twentyeighteen.get_round_ladders())
+# urls_2018 = twentyeighteen.get_game_urls()
+# twentyeighteen.get_summaries()
 
 # ################### Testing game scraping
 # def test_game_scrape_functions(game_url):
