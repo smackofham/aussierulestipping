@@ -2,34 +2,34 @@ import bs4
 from bs4 import NavigableString
 import requests
 import re
+import pandas as pd
 
-
-url_2018 = 'https://afltables.com/afl/seas/2018.html'
-game_url1 = 'https://afltables.com/afl/stats/games/2018/031420180322.html'
+url_year = 'https://afltables.com/afl/seas/2017.html'
+game_url2018 = 'https://afltables.com/afl/stats/games/2018/031420180322.html'
+game_url2017 = 'https://afltables.com/afl/stats/games/2017/131820170909.html'
 
 
 class BsScrapeYear:
 
     def __init__(self, url):
         self.url = url
+        self.year =re.search('\d\d\d\d', url).group(0)
         self.res = requests.get(self.url)
         self.year_soup = bs4.BeautifulSoup(self.res.text, "lxml")
         self.final_links = self.year_soup.select('b + a[href]')
         # Gets the url for the individual games
         # Have a missing game but don't know where it is.
+        # Not the complete urls for each game.
         self.game_urls = []
         for link in self.final_links:
             game_url = link.get('href')
             if 'game' in game_url:
-                self.game_urls.append(game_url)
+                # The urls in self.game_urls have the format '../stats/games/2018/031420180322.html'
+                # Have to remove the leading two dots.
+                self.game_urls.append('https://afltables.com/afl' + game_url[2:])
 
     def get_game_urls(self):
-        base_afltables_url = 'https://afltables.com/afl'
-        # The urls in self.game_urls have the format '../stats/games/2018/031420180322.html'
-        # Have to remove the leading two dots.
-        complete_urls = [base_afltables_url + game_url[2:] for game_url in self.game_urls]
-        # Return a list of the complete game urls for the season.
-        return complete_urls
+        return self.game_urls
 
     def get_round_ladders(self):
         round_dict = {}
@@ -45,6 +45,28 @@ class BsScrapeYear:
             round_dict[str(i)] = round_table_list
         # Returns a dictionary with keys being the round number and values being the complete round ladder table.
         return round_dict
+
+    def get_summaries(self):
+        game_summaries = []
+        for url in self.game_urls:
+            game = BsScrapeGame(url)
+            summary = game.get_scores()
+            # Throws away any games with extra time (Haven't figured out a way to deal with them yet)
+            ########## COME BACK TO ME.
+            if len(summary) < 21:
+                game_summaries.append(summary)
+
+        summary_headings = ['Round/Venue/Date/Time/Attendance', 'Team1', 'T1_Q1_Points', 'T1_Q2_Points', 'T1_Q3_Points',
+                            'T1_Q4_Points', 'Team2', 'T2_Q1_Points', 'T2_Q2_Points', 'T2_Q3_Points', 'T2_Q4_Points',
+                            'Q1_Margin',
+                            'Q2_Margin', 'Q3_Margin', 'Q4_Margin', 'Q1_Scores', 'Q2_Scores', 'Q3_Scores', 'Q4_Scores',
+                            'Umpires']
+
+        summaries_df = pd.DataFrame.from_records(game_summaries, columns=summary_headings)
+        # Creates the csv file for the game summaries from the pd dataframe.
+        filepath = r'C:\Users\erwin\Dropbox\PythonScripts\aussierulestipping\Summaries\%s.csv' % self.year
+        print(filepath)
+        summaries_df.to_csv(path_or_buf=filepath, index=True)
 
 
 class BsScrapeGame:
@@ -68,6 +90,12 @@ class BsScrapeGame:
         # Removes the back and forth arrows.
         score_list.pop(0)
         score_list.pop(1)
+        # Removes the label Qrt margin
+        score_list.pop(11)
+        # Removes the label Qrt scores
+        score_list.pop(15)
+        # Removes the label Umpires
+        score_list.pop(19)
         # Returns a simple list with the game summary
         return score_list
 
@@ -119,7 +147,7 @@ class BsScrapeGame:
 
     def get_scoring_progression(self):
         top_body = self.match_data.find_all('table')
-        scoring_progression_table = top_body[len(top_body)-1]
+        scoring_progression_table = top_body[len(top_body) - 1]
         scoring_progression_stats = scoring_progression_table.find_all('tr')
         scoring_progression_output = []
         for progress in scoring_progression_stats:
@@ -137,16 +165,18 @@ class BsScrapeGame:
                 if progress.find('td') is not None:
                     x = progress.find('td')
                     y = x.find('b')
-                    findings = re.search('([1-4][a-z][a-z]|Final) quarter \(\d\dm \d*s\)', y.text).group(0)
+                    findings = re.search('(([1-4][a-z][a-z]|Final) quarter \(\d*m \d*s\))|'
+                                         '([1-9][a-z][a-z] Extra Time \(\d*m \d*s\))', y.text).group(0)
                     scoring_progression_output.append(findings)
         # Returns a simple list of lists with individual rows having their own lists.
         return scoring_progression_output
 
-# ################### Testing year scraping
-# twentyeighteen = BsScrapeYear(url)
-# print(twentyeighteen.get_round_ladders())
-# urls_2018 = twentyeighteen.get_game_urls()
 
+################### Testing year scraping
+twentyeighteen = BsScrapeYear(url_year)
+# print(twentyeighteen.get_round_ladders())
+urls_2018 = twentyeighteen.get_game_urls()
+twentyeighteen.get_summaries()
 
 # ################### Testing game scraping
 # def test_game_scrape_functions(game_url):
@@ -162,8 +192,9 @@ class BsScrapeGame:
 #     print(d)
 #
 #     print(game_one.get_scoring_progression())
-
-
+#
+# # test_game_scrape_functions(game_url2017)
+#
 # ################### Testing game scraping for the year.
 # for url in urls_2018:
 #     test_game_scrape_functions(url)
