@@ -4,9 +4,7 @@ import requests
 import re
 import pandas as pd
 
-url_year = 'https://afltables.com/afl/seas/2017.html'
-game_url2018 = 'https://afltables.com/afl/stats/games/2018/031420180322.html'
-game_url2017 = 'https://afltables.com/afl/stats/games/2017/131820170909.html'
+pd.set_option('display.max_columns', None)
 
 
 class BsScrapeYear:
@@ -46,11 +44,11 @@ class BsScrapeYear:
         # Returns a dictionary with keys being the round number and values being the complete round ladder table.
         return round_dict
 
-    def get_summaries(self):
+    def csv_summaries(self):
         game_summaries = []
         for url in self.game_urls:
             game = BsScrapeGame(url)
-            summary = game.get_scores()
+            summary = game.get_summary()
             # Throws away any games with extra time (Haven't figured out a way to deal with them yet)
             ########## COME BACK TO ME.
             if len(summary) < 21:
@@ -65,7 +63,7 @@ class BsScrapeYear:
         summaries_df = pd.DataFrame.from_records(game_summaries, columns=summary_headings)
         # Creates the csv file for the game summaries from the pd dataframe.
         filepath = r'C:\Users\erwin\Dropbox\PythonScripts\aussierulestipping\Summaries\%s.csv' % self.year
-        print(filepath)
+        # print(filepath)
         summaries_df.to_csv(path_or_buf=filepath, index=True)
 
 
@@ -80,8 +78,14 @@ class BsScrapeGame:
         # Selects every <a> element with a href attribute starting with '../../../teams'.
         self.team1 = self.match_data.select('a[href^="../../../teams"]')[0].text
         self.team2 = self.match_data.select('a[href^="../../../teams"]')[1].text
+        self.round = ''
+        self.team1_stats_dict = ''
+        self.team2_stats_dict = ''
+        self.team1_player_details_dict = ''
+        self.team2_player_details_dict = ''
+        self.score_progression = ''
 
-    def get_scores(self):
+    def get_summary(self):
         top_table = self.match_data.find_all('table')[0]
         table_info = top_table.find_all('td')
         score_list = []
@@ -96,6 +100,8 @@ class BsScrapeGame:
         score_list.pop(15)
         # Removes the label Umpires
         score_list.pop(19)
+        # print(score_list[0])
+        self.round = re.search('(?<=Round: )\d\d|\d|([A-Z])\w+\s([A-Z])\w+', score_list[0]).group(0)
         # Returns a simple list with the game summary
         return score_list
 
@@ -141,12 +147,38 @@ class BsScrapeGame:
                 base_list.append(player_stats)
             return base_list
 
-        team1_stats_dict = process_team_stats(team1_stats)
-        team2_stats_dict = process_team_stats(team2_stats)
-        team1_player_details_dict = process_team_stats(team1_player_details)
-        team2_player_details_dict = process_team_stats(team2_player_details)
+        self.team1_stats_dict = process_team_stats(team1_stats)
+        self.team2_stats_dict = process_team_stats(team2_stats)
+        self.team1_player_details_dict = process_team_stats(team1_player_details)
+        self.team2_player_details_dict = process_team_stats(team2_player_details)
         # Returns dictionaries with keys being the top/bottom headers and player names.
-        return team1_stats_dict, team2_stats_dict, team1_player_details_dict, team2_player_details_dict
+        return self.team1_stats_dict, self.team2_stats_dict, self.team1_player_details_dict, self.team2_player_details_dict
+
+    def csv_player_stats(self):
+
+        def create_team_csv(team_stats, player_details, team_index):
+            team_names = [self.team1, self.team2]
+            team_stats_df = pd.DataFrame.from_records((team_stats[2:]), columns=team_stats[1])
+            team_player_details_df = pd.DataFrame.from_records((player_details[2:]), columns=player_details[1])
+            combined_df = pd.merge(team_stats_df, team_player_details_df, on='Player')
+            combined_df.drop('#_y', axis=1, inplace=True)
+            # Creates the csv file for the game summaries from the pd dataframe.
+            filepath = r'C:\Users\erwin\Dropbox\PythonScripts\aussierulestipping\Matches\2018\Round %s %s vs %s - ' \
+                       r'%s.csv' % (self.round, self.team1, self.team2, team_names[team_index])
+            combined_df.to_csv(path_or_buf=filepath, index=True)
+
+        create_team_csv(self.team1_stats_dict, self.team1_player_details_dict, 0)
+        create_team_csv(self.team2_stats_dict, self.team2_player_details_dict, 1)
+
+    def csv_score_progression(self):
+        copy_progression = self.score_progression.copy()
+        for index, item in enumerate(copy_progression):
+            if type(item) != list:
+                copy_progression.pop(index)
+        scoring_progression_df = pd.DataFrame.from_records(copy_progression[1:], columns=copy_progression[0])
+        filepath = r'C:\Users\erwin\Dropbox\PythonScripts\aussierulestipping\Matches\2018\Round %s %s vs %s - ' \
+                   r'Scoring Progression.csv' % (self.round, self.team1, self.team2)
+        scoring_progression_df.to_csv(path_or_buf=filepath, index=True)
 
     def get_scoring_progression(self):
         top_body = self.match_data.find_all('table')
@@ -172,32 +204,48 @@ class BsScrapeGame:
                                          '([1-9][a-z][a-z] Extra Time \(\d*m \d*s\))', y.text).group(0)
                     scoring_progression_output.append(findings)
         # Returns a simple list of lists with individual rows having their own lists.
+        self.score_progression = scoring_progression_output
         return scoring_progression_output
 
 
+year_url_2018 = 'https://afltables.com/afl/seas/2018.html'
+game_url2018 = 'https://afltables.com/afl/stats/games/2018/031420180322.html'
+game_url2017 = 'https://afltables.com/afl/stats/games/2017/131820170909.html'
+
+
 ################### Testing year scraping
-# twentyeighteen = BsScrapeYear(url_year)
+# twentyeighteen = BsScrapeYear(year_url_2018)
 # # print(twentyeighteen.get_round_ladders())
 # urls_2018 = twentyeighteen.get_game_urls()
-# twentyeighteen.get_summaries()
+# twentyeighteen.csv_summaries()
 
-# ################### Testing game scraping
+# Testing game scraping
 # def test_game_scrape_functions(game_url):
-#     game_one = BsScrapeGame(game_url)
+#     game = BsScrapeGame(game_url)
 #
-#     scores = game_one.get_scores()
-#     print(scores)
+#     # summary = game.get_summary()
+#     # print(summary)
+#     #
+#     # a, b, c, d = game.get_player_stats()
+#     # print(a)
+#     # print(b)
+#     # print(c)
+#     # print(d)
+#     #
+#     # print(game.get_scoring_progression())
+#     # print(game.round)
+#     game.get_summary()
+#     # print('Game round is: ', game.round)
+#     game.get_player_stats()
+#     game.get_scoring_progression()
+#     game.csv_player_stats()
+#     game.csv_score_progression()
 #
-#     a, b, c, d = game_one.get_player_stats()
-#     print(a)
-#     print(b)
-#     print(c)
-#     print(d)
 #
-#     print(game_one.get_scoring_progression())
-#
-# # test_game_scrape_functions(game_url2017)
-#
-# ################### Testing game scraping for the year.
+# test_game_scrape_functions(game_url2018)
+
+# # Testing game scraping for the year.
+# twentyeighteen = BsScrapeYear(year_url_2018)
+# urls_2018 = twentyeighteen.get_game_urls()
 # for url in urls_2018:
 #     test_game_scrape_functions(url)
