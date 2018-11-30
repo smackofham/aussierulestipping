@@ -213,7 +213,7 @@ game_url2018 = 'https://afltables.com/afl/stats/games/2018/031420180322.html'
 game_url2017 = 'https://afltables.com/afl/stats/games/2017/131820170909.html'
 
 
-################### Testing year scraping
+# # Testing year scraping
 # twentyeighteen = BsScrapeYear(year_url_2018)
 # # print(twentyeighteen.get_round_ladders())
 # urls_2018 = twentyeighteen.get_game_urls()
